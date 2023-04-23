@@ -69,7 +69,17 @@ class Setup(object):
         # Run inverse FFT to convert values from Lagrange basis to monomial basis
         # Optional: Check values size does not exceed maximum power setup can handle
         # Compute linear combination of setup with values
-        return NotImplemented
+        
+        # inverse FFT from Lagrange basis to monomial basis
+        # print("before fft", values.values)
+        coeffs = values.ifft().values
+        # print("after fft", coeffs)
+        if len(coeffs) > len(self.powers_of_x):
+            raise Exception("Not enough powers in setup")
+        print(ec_lincomb([(s, x) for s, x in zip(self.powers_of_x, coeffs)]))
+        print("ec linccomb")
+        return ec_lincomb([(s, x) for s, x in zip(self.powers_of_x, coeffs)])
+
 
     # Generate the verification key for this program with the given setup
     def verification_key(self, pk: CommonPreprocessedInput) -> VerificationKey:
