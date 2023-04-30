@@ -94,15 +94,34 @@ class Prover:
         if None not in witness:
             witness[None] = 0
 
+
+
         # Compute wire assignments for A, B, C, corresponding:
         # - A_values: witness[program.wires()[i].L]
         # - B_values: witness[program.wires()[i].R]
         # - C_values: witness[program.wires()[i].O]
+        A_values = [Scalar(0) for _ in range(group_order)]
+        print("A_values",A_values)
+        B_values = [Scalar(0) for _ in range(group_order)]
+        C_values = [Scalar(0) for _ in range(group_order)]
+
+
+        for i, wire_gates in enumerate( program.wires() ):
+            A_values[i] = Scalar(witness[wire_gates.L])
+            B_values[i] = Scalar(witness[wire_gates.R])
+            C_values[i] = Scalar(witness[wire_gates.O])
 
         # Construct A, B, C Lagrange interpolation polynomials for
         # A_values, B_values, C_values
+        self.A = Polynomial(A_values, Basis.LAGRANGE)
+        self.B = Polynomial(B_values, Basis.LAGRANGE)
+        self.C = Polynomial(C_values, Basis.LAGRANGE)
 
         # Compute a_1, b_1, c_1 commitments to A, B, C polynomials
+        a_1 = setup.commit(self.A)
+        print("coomit a", a_1)
+        b_1 = setup.commit(self.B)
+        c_1 = setup.commit(self.C)
 
         # Sanity check that witness fulfils gate constraints
         assert (
