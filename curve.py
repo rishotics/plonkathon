@@ -13,6 +13,11 @@ class Scalar(Field):
     # Gets the first root of unity of a given group order
     @classmethod
     def root_of_unity(cls, group_order: int):
+#         The value 5 is used as the primitive root in the provided code because it is a known and commonly used value for the BN128 curve.
+# In elliptic curve cryptography, a primitive root (also known as a generator) is a specific point on the curve that, when multiplied repeatedly by different scalar values, can generate all the points on the curve. It serves as a fundamental building block for various cryptographic operations.
+# In the context of the BN128 curve, 5 is a pre-selected value that has been determined to be a suitable primitive root. It satisfies the necessary properties required for efficient and secure cryptographic operations on the curve.
+# By using 5 as the primitive root in the code, it ensures that the generated roots of unity and other calculations performed on the curve are consistent and align with the characteristics of the BN128 curve.
+# It's worth noting that the choice of the primitive root can vary depending on the specific elliptic curve being used. Different curves may have different primitive roots that are carefully chosen for their mathematical properties and cryptographic suitability.
         return Scalar(5) ** ((cls.field_modulus - 1) // group_order)
 
     # Gets the full list of roots of unity of a given group order
