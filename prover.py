@@ -148,6 +148,10 @@ class Prover:
         roots_of_unity = Scalar.roots_of_unity(group_order)
 
         for i in range(group_order):
+            # print("i",i)
+            # print("self.A.values[i]",self.A.values[i])
+            # print("self.pk.S1.values[i]]",self.pk.S1.values[i])
+            # S1, S2, S3 are the permutation polynomials
             Z_values.append(Z_values[-1]
                             * self.rlc(self.A.values[i], roots_of_unity[i])
                             * self.rlc(self.B.values[i], 2 * roots_of_unity[i])
@@ -192,6 +196,25 @@ class Prover:
         setup = self.setup
 
         # Compute the quotient polynomial
+        # print("quarter_roots",quarter_roots)
+
+
+        # fft_expand(): Converts a list of evaluations at [1, w, w**2... w**(n-1)] to
+        # a list of evaluations at
+        # [offset, offset * q, offset * q**2 ... offset * q**(4n-1)] where q = w**(1/4)
+        # This lets us work with higher-degree polynomials, and the offset lets us
+        # avoid the 0/0 problem when computing a division (as long as the offset is
+        # chosen randomly)
+
+        A_big = self.fft_expand(self.A)
+        B_big = self.fft_expand(self.B)
+        C_big = self.fft_expand(self.C)
+        # print("A_big",A_big.values)
+        # INTUITION: We are expanding the degree of polynomials 
+
+       
+        
+
 
         # List of roots of unity at 4x fineness, i.e. the powers of µ
         # where µ^(4n) = 1
@@ -199,19 +222,36 @@ class Prover:
         # Using self.fft_expand, move A, B, C into coset extended Lagrange basis
 
         # Expand public inputs polynomial PI into coset extended Lagrange
+#         PI(X) := sigma(−xi · Li(X)) i∈[ℓ] 
+        PI_big = self.fft_expand(self.PI)
 
         # Expand selector polynomials pk.QL, pk.QR, pk.QM, pk.QO, pk.QC
+        QL_big, QR_big, QM_big, QO_big, QC_big= (self.fft_expand(x) 
+                                                         for x in 
+                                                         (self.pk.QL, self.pk.QR, self.pk.QM, self.pk.QO, self.pk.QC) )
+
         # into the coset extended Lagrange basis
 
         # Expand permutation grand product polynomial Z into coset extended
         # Lagrange basis
+        Z_big = self.fft_expand(self.Z)
+
 
         # Expand shifted Z(ω) into coset extended Lagrange basis
 
+
         # Expand permutation polynomials pk.S1, pk.S2, pk.S3 into coset
         # extended Lagrange basis
+        S1_big, S2_big, S3_big = (self.fft_expand(x) for x in (self.pk.S1, self.pk.S2, self.pk.S3))
 
         # Compute Z_H = X^N - 1, also in evaluation form in the coset
+        quarter_roots = Scalar.roots_of_unity(group_order * 4)
+
+        # EXPLAIN fft_cofactor: This value could be anything, it just needs to be unpredictable. Lets us
+        # have evaluation forms at cosets to avoid zero evaluations, so we can
+        # divide polys without the 0/0 issue
+        # fft_cofactor = self.get_and_append_challenge(b"fft_cofactor")
+        ZH_big = Polynomial( [((Scalar(r) * self.fft_cofactor) ** group_order -1)  for r in quarter_roots], Basis.LAGRANGE)
 
         # Compute L0, the Lagrange basis polynomial that evaluates to 1 at x = 1 = ω^0
         # and 0 at other roots of unity
@@ -227,6 +267,10 @@ class Prover:
         # 1. All gates are correct:
         #    A * QL + B * QR + A * B * QM + C * QO + PI + QC = 0
         #
+        gate_constraints: Polynomial = lambda: (
+            A_big * QL_big + B_big * QR_big + A_big * B_big * QM_big + C_big * QO_big + PI_big + QC_big)
+        print("gate_constraints",gate_constraints)
+
         # 2. The permutation accumulator is valid:
         #    Z(wx) = Z(x) * (rlc of A, X, 1) * (rlc of B, 2X, 1) *
         #                   (rlc of C, 3X, 1) / (rlc of A, S1, 1) /
