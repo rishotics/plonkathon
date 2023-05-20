@@ -252,7 +252,7 @@ class Prover:
         # divide polys without the 0/0 issue
         # fft_cofactor = self.get_and_append_challenge(b"fft_cofactor")
         ZH_big = Polynomial( [((Scalar(r) * self.fft_cofactor) ** group_order -1)  for r in quarter_roots], Basis.LAGRANGE)
-
+        
         # Compute L0, the Lagrange basis polynomial that evaluates to 1 at x = 1 = ω^0
         # and 0 at other roots of unity
 
@@ -277,6 +277,33 @@ class Prover:
         #                   (rlc of B, S2, 1) / (rlc of C, S3, 1)
         #    rlc = random linear combination: term_1 + beta * term2 + gamma * term3
         #
+
+        Z_shifted_big = Z_big.shift(4)
+        fft_cofactor = self.fft_cofactor
+
+        # Z(wx) * (A + b * S1 + y) * (B + b * S2 + y) * (C + b * S3 + y) 
+        # = 
+        # Z(x) * (A + b * X + y) * (B + b * 2X + y) * (C + b * 3X + y)
+
+        # Here x is quarter_roots[i]*fft_cofactor
+
+        permutation_grand_product = lambda: (
+            (
+                self.rlc(A_big, quarter_roots * fft_cofactor)
+                * self.rlc(B_big, quarter_roots * (fft_cofactor * 2))
+                * self.rlc(C_big, quarter_roots * (fft_cofactor * 3))
+            )
+            * Z_big
+            - (
+                self.rlc(A_big, S1_big)
+                * self.rlc(B_big, S2_big)
+                * self.rlc(C_big, S3_big)
+            )
+            * Z_shifted_big
+        )
+        
+        print("permutation_grand_product",permutation_grand_product() * self.alpha)
+
         # 3. The permutation accumulator equals 1 at the start point
         #    (Z - 1) * L0 = 0
         #    L0 = Lagrange polynomial, equal at all roots of unity except 1

@@ -102,7 +102,7 @@ class Polynomial:
     def shift(self, shift: int):
         assert self.basis == Basis.LAGRANGE
         assert shift < len(self.values)
-
+        # [1, 2, 3, 4, 5] -> [4, 5, 1, 2, 3] shift by 2
         return Polynomial(
             self.values[shift:] + self.values[:shift],
             self.basis,
