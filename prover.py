@@ -306,8 +306,15 @@ class Prover:
 
         # 3. The permutation accumulator equals 1 at the start point
         #    (Z - 1) * L0 = 0
+        permutation_grand_product_last_check = lambda: (Z_big - Scalar(1)) * L0_big
         #    L0 = Lagrange polynomial, equal at all roots of unity except 1
 
+
+        QUOT_big = (
+                    gate_constraints() + 
+                    permutation_grand_product() * self.alpha + 
+                    permutation_grand_product_last_check() * self.alpha**2
+                   ) / ZH_big
         # Sanity check: QUOT has degree < 3n
         assert (
             self.expanded_evals_to_coeffs(QUOT_big).values[-group_order:]
@@ -315,8 +322,12 @@ class Prover:
         )
         print("Generated the quotient polynomial")
 
+        expanded_QUOT = self.expanded_evals_to_coeffs(QUOT_big)
+
         # Split up T into T1, T2 and T3 (needed because T has degree 3n - 4, so is
         # too big for the trusted setup)
+
+        T1 = Polynomial(QUOT_big.values[:group_order] )
 
         # Sanity check that we've computed T1, T2, T3 correctly
         assert (
