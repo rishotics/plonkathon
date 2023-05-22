@@ -143,6 +143,24 @@ class Polynomial:
             return Polynomial(
                 [Scalar(x) for x in _fft(nvals, o, roots)], Basis.LAGRANGE
             )
+        
+
+# The Lagrange form of a polynomial is a specific representation that allows us to 
+# interpolate or evaluate the polynomial at specific points. It uses Lagrange basis functions, 
+# which are polynomials associated with each interpolation point. These basis functions have the 
+# property of being 1 at their corresponding point and 0 at all other points.
+
+# When we apply the inverse Fourier transform to polynomials in the Lagrange domain, it is 
+# usually to transform the polynomial back from its interpolated or evaluated values at specific 
+# points to its original polynomial form. The inverse Fourier transform helps us recover the 
+# polynomial coefficients from the values in the Lagrange domain.
+
+# By applying the inverse Fourier transform to polynomials in the Lagrange domain, we can 
+# reconstruct the original polynomial from its Fourier coefficients. This process involves 
+# evaluating the Lagrange basis functions at the desired interpolation points and multiplying 
+# them by the corresponding Fourier coefficients. The sum of these multiplications yields the 
+# reconstructed polynomial in the time domain.
+
 
     def ifft(self):
         return self.fft(True)
@@ -160,6 +178,8 @@ class Polynomial:
         x_powers = [(offset**i * x) for i, x in enumerate(x_powers)] + [Scalar(0)] * (
             group_order * 3
         )
+        print("self.values ", self.values)
+        print("x_powers ", x_powers)
         return Polynomial(x_powers, Basis.MONOMIAL).fft()
 
     # Convert from offset form into coefficients
