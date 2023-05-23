@@ -197,6 +197,8 @@ class Prover:
 
         # Compute the quotient polynomial
         # print("quarter_roots",quarter_roots)
+        quarter_roots = Scalar.roots_of_unity(group_order * 4)
+
 
 
         # fft_expand(): Converts a list of evaluations at [1, w, w**2... w**(n-1)] to
@@ -209,6 +211,18 @@ class Prover:
         A_big = self.fft_expand(self.A)
         B_big = self.fft_expand(self.B)
         C_big = self.fft_expand(self.C)
+        # Z_H = X^N - 1, also in evaluation form in the coset
+        # EXPLAIN fft_cofactor: This value could be anything, it just needs to be unpredictable. Lets us
+        # have evaluation forms at cosets to avoid zero evaluations, so we can
+        # divide polys without the 0/0 issue
+        # fft_cofactor = self.get_and_append_challenge(b"fft_cofactor")
+        ZH_big = Polynomial(
+            [
+                ((Scalar(r) * self.fft_cofactor) ** group_order - 1)
+                for r in quarter_roots
+            ],
+            Basis.LAGRANGE,
+        )
         # print("A_big",A_big.values)
         # INTUITION: We are expanding the degree of polynomials 
 
@@ -223,19 +237,29 @@ class Prover:
 
         # Expand public inputs polynomial PI into coset extended Lagrange
 #         PI(X) := sigma(−xi · Li(X)) i∈[ℓ] 
-        PI_big = self.fft_expand(self.PI)
 
         # Expand selector polynomials pk.QL, pk.QR, pk.QM, pk.QO, pk.QC
-        QL_big, QR_big, QM_big, QO_big, QC_big= (self.fft_expand(x) 
-                                                         for x in 
-                                                         (self.pk.QL, self.pk.QR, self.pk.QM, self.pk.QO, self.pk.QC) )
+        QL_big, QR_big, QM_big, QO_big, QC_big, PI_big = (
+            self.fft_expand(x)
+            for x in (
+                self.pk.QL,
+                self.pk.QR,
+                self.pk.QM,
+                self.pk.QO,
+                self.pk.QC,
+                self.PI,
+            )
+        )
 
         # into the coset extended Lagrange basis
 
         # Expand permutation grand product polynomial Z into coset extended
         # Lagrange basis
         Z_big = self.fft_expand(self.Z)
-
+        Z_shifted_big = Z_big.shift(4)
+        S1_big = self.fft_expand(self.pk.S1)
+        S2_big = self.fft_expand(self.pk.S2)
+        S3_big = self.fft_expand(self.pk.S3)
 
         # Expand shifted Z(ω) into coset extended Lagrange basis
 
@@ -245,13 +269,13 @@ class Prover:
         S1_big, S2_big, S3_big = (self.fft_expand(x) for x in (self.pk.S1, self.pk.S2, self.pk.S3))
 
         # Compute Z_H = X^N - 1, also in evaluation form in the coset
-        quarter_roots = Scalar.roots_of_unity(group_order * 4)
-
-        # EXPLAIN fft_cofactor: This value could be anything, it just needs to be unpredictable. Lets us
-        # have evaluation forms at cosets to avoid zero evaluations, so we can
-        # divide polys without the 0/0 issue
-        # fft_cofactor = self.get_and_append_challenge(b"fft_cofactor")
-        ZH_big = Polynomial( [((Scalar(r) * self.fft_cofactor) ** group_order -1)  for r in quarter_roots], Basis.LAGRANGE)
+        alpha = self.alpha
+        fft_cofactor = self.fft_cofactor
+        quarter_roots = Polynomial(
+            Scalar.roots_of_unity(group_order * 4), Basis.LAGRANGE
+        )
+        
+        # ZH_big = Polynomial( [((Scalar(r) * self.fft_cofactor) ** group_order -1)  for r in quarter_roots], Basis.LAGRANGE)
         
         # Compute L0, the Lagrange basis polynomial that evaluates to 1 at x = 1 = ω^0
         # and 0 at other roots of unity
@@ -267,9 +291,14 @@ class Prover:
         # 1. All gates are correct:
         #    A * QL + B * QR + A * B * QM + C * QO + PI + QC = 0
         #
-        gate_constraints: Polynomial = lambda: (
-            A_big * QL_big + B_big * QR_big + A_big * B_big * QM_big + C_big * QO_big + PI_big + QC_big)
-        print("gate_constraints",gate_constraints)
+        gate_constraints = lambda: (
+            A_big * QL_big
+            + B_big * QR_big
+            + A_big * B_big * QM_big
+            + C_big * QO_big
+            + PI_big
+            + QC_big
+        )
 
         # 2. The permutation accumulator is valid:
         #    Z(wx) = Z(x) * (rlc of A, X, 1) * (rlc of B, 2X, 1) *
@@ -278,8 +307,6 @@ class Prover:
         #    rlc = random linear combination: term_1 + beta * term2 + gamma * term3
         #
 
-        Z_shifted_big = Z_big.shift(4)
-        fft_cofactor = self.fft_cofactor
 
         # Z(wx) * (A + b * S1 + y) * (B + b * S2 + y) * (C + b * S3 + y) 
         # = 
@@ -302,19 +329,25 @@ class Prover:
             * Z_shifted_big
         )
         
-        print("permutation_grand_product",permutation_grand_product() * self.alpha)
+        # print("permutation_grand_product",permutation_grand_product() * self.alpha)
 
         # 3. The permutation accumulator equals 1 at the start point
         #    (Z - 1) * L0 = 0
-        permutation_grand_product_last_check = lambda: (Z_big - Scalar(1)) * L0_big
         #    L0 = Lagrange polynomial, equal at all roots of unity except 1
+        permutation_first_row = lambda: (Z_big - Scalar(1)) * L0_big
+
+        alpha = self.alpha
 
 
+        
         QUOT_big = (
-                    gate_constraints() + 
-                    permutation_grand_product() * self.alpha + 
-                    permutation_grand_product_last_check() * self.alpha**2
-                   ) / ZH_big
+            gate_constraints()
+            + permutation_grand_product() * alpha
+            + permutation_first_row() * alpha**2
+        ) / ZH_big
+
+        all_coeffs = self.expanded_evals_to_coeffs(QUOT_big).values
+
         # Sanity check: QUOT has degree < 3n
         assert (
             self.expanded_evals_to_coeffs(QUOT_big).values[-group_order:]
@@ -322,12 +355,15 @@ class Prover:
         )
         print("Generated the quotient polynomial")
 
-        expanded_QUOT = self.expanded_evals_to_coeffs(QUOT_big)
-
-        # Split up T into T1, T2 and T3 (needed because T has degree 3n - 4, so is
+        # Split up T into T1, T2 and T3 (needed because T has degree 3n, so is
         # too big for the trusted setup)
+        T1 = Polynomial(all_coeffs[:group_order], Basis.MONOMIAL).fft()
+        print("T1",T1)
+        T2 = Polynomial(all_coeffs[group_order : group_order * 2], Basis.MONOMIAL).fft()
+        T3 = Polynomial(
+            all_coeffs[group_order * 2 : group_order * 3], Basis.MONOMIAL
+        ).fft()
 
-        T1 = Polynomial(QUOT_big.values[:group_order] )
 
         # Sanity check that we've computed T1, T2, T3 correctly
         assert (

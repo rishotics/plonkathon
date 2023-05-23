@@ -175,11 +175,13 @@ class Polynomial:
         assert self.basis == Basis.LAGRANGE
         group_order = len(self.values)
         x_powers = self.ifft().values
+        # [c0, c1, c2, ....., cn] -> [c0, c1 * offset**1, c2 * offset**2, ... cn * offset**n]
         x_powers = [(offset**i * x) for i, x in enumerate(x_powers)] + [Scalar(0)] * (
             group_order * 3
         )
         print("self.values ", self.values)
         print("x_powers ", x_powers)
+        # returning the the polynomial in coefficient or monomial form
         return Polynomial(x_powers, Basis.MONOMIAL).fft()
 
     # Convert from offset form into coefficients
