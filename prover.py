@@ -375,12 +375,41 @@ class Prover:
         print("Generated T1, T2, T3 polynomials")
 
         # Compute commitments t_lo_1, t_mid_1, t_hi_1 to T1, T2, T3 polynomials
+        t_lo_1 = setup.commit(T1)
+        t_mid_1 = setup.commit(T2)
+        t_hi_1 = setup.commit(T3)
 
         # Return t_lo_1, t_mid_1, t_hi_1
         return Message3(t_lo_1, t_mid_1, t_hi_1)
 
     def round_4(self) -> Message4:
         # Compute evaluations to be used in constructing the linearization polynomial.
+
+        # Compute the "linearization polynomial" R. This is a clever way to avoid
+        # needing to provide evaluations of _all_ the polynomials that we are
+        # checking an equation betweeen: instead, we can "skip" the first
+        # multiplicand in each term. The idea is that we construct a
+        # polynomial which is constructed to equal 0 at Z only if the equations
+        # that we are checking are correct, and which the verifier can reconstruct
+        # the KZG commitment to, and we provide proofs to verify that it actually
+        # equals 0 at Z
+        #
+        # In order for the verifier to be able to reconstruct the commitment to R,
+        # it has to be "linear" in the proof items, hence why we can only use each
+        # proof item once; any further multiplicands in each term need to be
+        # replaced with their evaluations at Z, which do still need to be provided
+        zeta = self.zeta
+        roots_of_unity = Scalar.roots_of_unity(self.group_order)
+        root_of_unity = Scalar.root_of_unity(self.group_order)
+        print("roots_of_unity[1]",roots_of_unity[1])
+        print("root_of_unity", root_of_unity)
+
+        a_eval = self.A.barycentric_eval(zeta)
+        b_eval = self.B.barycentric_eval(zeta)
+        c_eval = self.C.barycentric_eval(zeta)
+        s1_eval = self.S1.barycentric_eval(zeta)
+        s2_eval = self.S2.barycentric_eval(zeta)
+        z_shifted_eval = self.Z.barycentric_eval(zeta * roots_of_unity[1])
 
         # Compute a_eval = A(zeta)
         # Compute b_eval = B(zeta)
