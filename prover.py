@@ -379,6 +379,10 @@ class Prover:
         t_mid_1 = setup.commit(T2)
         t_hi_1 = setup.commit(T3)
 
+        self.T1 = T1
+        self.T2 = T2
+        self.T3 = T3
+
         # Return t_lo_1, t_mid_1, t_hi_1
         return Message3(t_lo_1, t_mid_1, t_hi_1)
 
@@ -423,9 +427,19 @@ class Prover:
 
     def round_5(self) -> Message5:
         # Evaluate the Lagrange basis polynomial L0 at zeta
+        setup = self.setup
+        zeta = self.zeta
+
+        L0 = Polynomial([Scalar(1)] +  [Scalar(0) * (self.group_order-1)], Basis.Lagrange)
+        L0_eval = L0.barycentric_eval(zeta)
+
         # Evaluate the vanishing polynomial Z_H(X) = X^n - 1 at zeta
+        # ZH = Polynomial(Scalar.roots_of_unity(self.group_order))
+        # ZH_eval = ZH.barycentric_eval(zeta)
+        ZH_eval = zeta ** self.group_order - 1
 
         # Move T1, T2, T3 into the coset extended Lagrange basis
+        T1_extended = self.T
         # Move pk.QL, pk.QR, pk.QM, pk.QO, pk.QC into the coset extended Lagrange basis
         # Move Z into the coset extended Lagrange basis
         # Move pk.S3 into the coset extended Lagrange basis
